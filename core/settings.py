@@ -14,11 +14,13 @@ SECRET_KEY = 'django-insecure-4pumnkvclm)dbfs%!cplges*mg)hk2&&0hb@-!h8vh-aq98fel
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['84.8.219.196', 'localhost', '127.0.0.1', '*']
 # Autoriser l-frontend dyal Vite/React
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://84.8.219.196:5173",
+    "http://84.8.219.196",
 ]
 
 # Application definition
