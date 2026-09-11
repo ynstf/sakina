@@ -20,7 +20,7 @@ services:
       retries: 5
 
   web:
-    image: ${DOCKERHUB_USERNAME}/sakina-backend:latest
+    image: yoness/sakina-backend:latest
     container_name: sakina_django
     restart: always
     ports:
