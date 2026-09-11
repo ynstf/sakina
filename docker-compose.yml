@@ -35,5 +35,14 @@ services:
       db:
         condition: service_healthy
 
+  frontend:
+    image: yoness/sakina-frontend:latest
+    container_name: sakina_react
+    restart: always
+    ports:
+      - "5173:80"
+    depends_on:
+      - web
+
 volumes:
   postgres_data:
