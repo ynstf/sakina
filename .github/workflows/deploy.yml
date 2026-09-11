@@ -55,6 +55,15 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/sakina-backend:latest
 
+      - name: Build and push Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend    # Change to . if your frontend Dockerfile is in the root
+          file: ./frontend/Dockerfile  # Path to your Frontend Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/sakina-frontend:latest
+          
   # STEP 3: Deploy to Oracle Cloud Instance
   deploy:
     needs: build-and-push
