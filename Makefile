@@ -1,5 +1,5 @@
 run:
-	python manage.py runserver
+	python manage.py runserver 0.0.0.0:8000
 
 migrate:
 	python manage.py makemigrations && python manage.py migrate
@@ -19,8 +19,18 @@ requirements:
 test:
 	pytest
 
-venv: 
-	env\Scripts\activate
+up:
+	docker compose up --build
 
-no-venv: 
-	env\Scripts\deactivate
+down:
+	docker compose down
+
+migrate_docker:
+	docker compose exec web python manage.py makemigrations
+	docker compose exec web python manage.py migrate
+
+create_admin_docker:
+	docker compose exec web python manage.py createsuperuser
+
+logs_docker:
+	docker compose logs -f web
