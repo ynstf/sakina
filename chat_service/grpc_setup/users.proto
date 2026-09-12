@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package users;
+
+// L-khidma (Service) li ghadi n-diro
+service UserAuth {
+    // Function li kat-ched token w kat-red data dyal user
+    rpc VerifyToken (TokenRequest) returns (UserData);
+}
+
+// Chno ghadi nsifto mn FastAPI (Req)
+message TokenRequest {
+    string token = 1;
+}
+
+// Chno ghadi n-reddo mn Django (Res)
+message UserData {
+    bool is_valid = 1;
+    int32 id = 2;
+    string username = 3;
+    string email = 4;
+}

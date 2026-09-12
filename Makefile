@@ -1,6 +1,9 @@
 run:
 	python manage.py runserver 0.0.0.0:8000
 
+grpc:
+	python manage.py rungrpc
+
 migrate:
 	python manage.py makemigrations && python manage.py migrate
 
