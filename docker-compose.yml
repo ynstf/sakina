@@ -50,11 +50,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DB_HOST=db
-      - DB_NAME=sakina_db
-      - DB_USER=sakina_user
-      - DB_PASSWORD=sakina_password
-      - DB_PORT=5432
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=sakina_db
+      - POSTGRES_USER=sakina_user
+      - POSTGRES_PASSWORD=sakina_password
+      - POSTGRES_PORT=5432
     depends_on:
       db:
         condition: service_healthy
@@ -64,15 +64,17 @@ services:
     image: yoness/sakina-backend:latest
     container_name: sakina_grpc
     restart: always
-    command: python manage.py rungrpc
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py rungrpc"
     ports:
       - "50051:50051"
     environment:
-      - DB_HOST=db
-      - DB_NAME=sakina_db
-      - DB_USER=sakina_user
-      - DB_PASSWORD=sakina_password
-      - DB_PORT=5432
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=sakina_db
+      - POSTGRES_USER=sakina_user
+      - POSTGRES_PASSWORD=sakina_password
+      - POSTGRES_PORT=5432
     depends_on:
       db:
         condition: service_healthy
