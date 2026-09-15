@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # 1. Database
   db:
     image: postgres:15-alpine
     container_name: sakina_postgres
@@ -19,6 +20,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # 2. Redis & RabbitMQ
+  redis:
+    image: redis:7-alpine
+    container_name: sakina_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: sakina_rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  # 3. Django Web (REST API)
   web:
     image: yoness/sakina-backend:latest
     container_name: sakina_django
@@ -35,6 +56,63 @@ services:
       db:
         condition: service_healthy
 
+  # 4. Django gRPC Service
+  grpc_backend:
+    image: yoness/sakina-backend:latest
+    container_name: sakina_grpc
+    restart: always
+    command: python manage.py grpcrunserver 0.0.0.0:50051
+    ports:
+      - "50051:50051"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=sakina_db
+      - DB_USER=sakina_user
+      - DB_PASSWORD=sakina_password
+      - DB_PORT=5432
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # 5. FastAPI Chat Service (Uses pre-built image)
+  chat_service:
+    image: yoness/sakina-chat:latest
+    container_name: sakina_chat
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
+      - rabbitmq
+      - web
+      - grpc_backend
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
+      - GRPC_SERVER_URL=grpc_backend:50051
+      - DB_HOST=db
+      - DB_NAME=sakina_db
+      - DB_USER=sakina_user
+      - DB_PASSWORD=sakina_password
+
+  # 6. Celery Worker (Shares pre-built chat image)
+  celery_worker:
+    image: yoness/sakina-chat:latest
+    container_name: sakina_celery
+    restart: always
+    command: celery -A celery_worker worker --loglevel=info -P threads
+    depends_on:
+      - rabbitmq
+      - db
+    environment:
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
+      - DB_HOST=db
+      - DB_NAME=sakina_db
+      - DB_USER=sakina_user
+      - DB_PASSWORD=sakina_password
+
+  # 7. React Frontend
   frontend:
     image: yoness/sakina-frontend:latest
     container_name: sakina_react
