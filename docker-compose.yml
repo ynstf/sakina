@@ -44,6 +44,9 @@ services:
     image: yoness/sakina-backend:latest
     container_name: sakina_django
     restart: always
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
     ports:
       - "8000:8000"
     environment:
@@ -61,7 +64,7 @@ services:
     image: yoness/sakina-backend:latest
     container_name: sakina_grpc
     restart: always
-    command: python manage.py grpcrunserver 0.0.0.0:50051
+    command: python manage.py rungrpc
     ports:
       - "50051:50051"
     environment:
@@ -95,6 +98,9 @@ services:
       - DB_NAME=sakina_db
       - DB_USER=sakina_user
       - DB_PASSWORD=sakina_password
+      - GRPC_HOST=sakina_grpc:50051
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672//
+      - CHAT_DB_URL=postgresql://sakina_user:sakina_password@db:5432/sakina_db
 
   # 6. Celery Worker (Shares pre-built chat image)
   celery_worker:
@@ -111,6 +117,9 @@ services:
       - DB_NAME=sakina_db
       - DB_USER=sakina_user
       - DB_PASSWORD=sakina_password
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672//
+      - CHAT_DB_URL=postgresql://sakina_user:sakina_password@db:5432/sakina_db
 
   # 7. React Frontend
   frontend:
