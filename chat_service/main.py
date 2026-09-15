@@ -20,15 +20,42 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
 
 def verify_token_with_django(token: str):
-    with grpc.insecure_channel(GRPC_HOST) as channel:
+    # Ensure correct fallback inside Docker network
+    grpc_target = os.getenv("GRPC_HOST", "sakina_grpc:50051")
+    
+    # Strip 'Bearer ' prefix if present
+    if token and token.startswith("Bearer "):
+        token = token.split(" ")[1]
+
+    with grpc.insecure_channel(grpc_target) as channel:
         stub = users_pb2_grpc.UserAuthStub(channel)
         try:
             response = stub.VerifyToken(users_pb2.TokenRequest(token=token))
             if not response.is_valid:
+                print("FastAPI: Django gRPC returned is_valid=False", flush=True)
                 return None
-            return {"id": str(response.id), "username": response.username, "email": response.email}
-        except grpc.RpcError:
+            return {
+                "id": str(response.id), 
+                "username": response.username, 
+                "email": response.email
+            }
+        except grpc.RpcError as e:
+            print(f"FastAPI gRPC Connection Error: {e.code()} - {e.details()}", flush=True)
             return None
+
+
+# def verify_token_with_django(token: str):
+#     with grpc.insecure_channel(GRPC_HOST) as channel:
+#         stub = users_pb2_grpc.UserAuthStub(channel)
+#         try:
+#             response = stub.VerifyToken(users_pb2.TokenRequest(token=token))
+#             if not response.is_valid:
+#                 return None
+#             return {"id": str(response.id), "username": response.username, "email": response.email}
+#         except grpc.RpcError:
+#             return None
+
+
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     user = verify_token_with_django(credentials.credentials)
