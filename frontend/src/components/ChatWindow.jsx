@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Loader2 } from 'lucide-react';
 
-export default function ChatWindow({ currentUserId, targetUser, isTherapist }) {
+export default function ChatWindow({ currentUserId, targetUser, isTherapist, onNewMessage }) {
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(true);
     const [isConnected, setIsConnected] = useState(false);
+    const [reconnectAttempt, setReconnectAttempt] = useState(0);
     
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
+    const reconnectTimer = useRef(null);
 
-    // Determine client and therapist IDs based on roles
-    const clientId = isTherapist ? targetUser.id : currentUserId;
-    const therapistId = isTherapist ? currentUserId : targetUser.id;
+    // Determine client and therapist IDs based on roles - always strings
+    const clientId = String(isTherapist ? targetUser.id : currentUserId);
+    const therapistId = String(isTherapist ? currentUserId : targetUser.id);
 
     useEffect(() => {
         setMessages([]);
@@ -24,7 +26,11 @@ export default function ChatWindow({ currentUserId, targetUser, isTherapist }) {
 
         return () => {
             if (ws.current) {
+                ws.current.onclose = null; // prevent reconnect on unmount
                 ws.current.close();
+            }
+            if (reconnectTimer.current) {
+                clearTimeout(reconnectTimer.current);
             }
         };
     }, [targetUser.id, currentUserId]);
@@ -37,11 +43,10 @@ export default function ChatWindow({ currentUserId, targetUser, isTherapist }) {
     const fetchHistory = async () => {
         const token = localStorage.getItem('access_token');
         try {
-            const response = await fetch(`${import.meta.env.VITE_CHAT_API_URL}chat/history/client/${clientId}/therapist/${therapistId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const response = await fetch(
+                `${import.meta.env.VITE_CHAT_API_URL}chat/history/client/${clientId}/therapist/${therapistId}`,
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
             const data = await response.json();
             if (data.messages) {
                 setMessages(data.messages);
@@ -57,44 +62,67 @@ export default function ChatWindow({ currentUserId, targetUser, isTherapist }) {
         const token = localStorage.getItem('access_token');
         const wsUrl = `${import.meta.env.VITE_WS_URL}chat/client/${clientId}/therapist/${therapistId}?token=${token}`;
         
-        ws.current = new WebSocket(wsUrl);
+        if (ws.current) {
+            ws.current.onclose = null;
+            ws.current.close();
+        }
         
-        ws.current.onopen = () => {
+        const socket = new WebSocket(wsUrl);
+        ws.current = socket;
+        
+        socket.onopen = () => {
             setIsConnected(true);
+            setReconnectAttempt(0);
             console.log("WebSocket connected");
         };
         
-        ws.current.onmessage = (event) => {
+        socket.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
                 if (data.system) {
-                    // System message
-                    setMessages(prev => [...prev, { id: Date.now(), system: true, message_text: data.message }]);
-                } else {
-                    // Normal message
-                    setMessages(prev => [...prev, {
-                        id: Date.now(),
-                        sender_id: data.sender_id,
-                        message_text: data.text,
-                        timestamp: new Date().toISOString()
-                    }]);
+                    // Skip join/leave system messages from UI to keep it clean
+                    return;
+                }
+                // Real-time message received
+                const newMsg = {
+                    id: Date.now(),
+                    sender_id: String(data.sender_id),
+                    message_text: data.text,
+                    timestamp: new Date().toISOString()
+                };
+                setMessages(prev => [...prev, newMsg]);
+
+                // If this is a therapist window and the message is from the client,
+                // notify the Dashboard to add this client to the sidebar if not already there
+                if (isTherapist && String(data.sender_id) !== String(currentUserId) && onNewMessage) {
+                    onNewMessage(clientId, data.username || `Client #${clientId}`);
                 }
             } catch (err) {
                 console.error("Error parsing websocket message", err);
             }
         };
         
-        ws.current.onclose = () => {
+        socket.onclose = (event) => {
             setIsConnected(false);
-            console.log("WebSocket disconnected");
+            console.log("WebSocket disconnected, will retry...");
+            // Auto-reconnect after 3 seconds if not a deliberate close
+            if (event.code !== 1000 && event.code !== 1008) {
+                reconnectTimer.current = setTimeout(() => {
+                    console.log("Reconnecting WebSocket...");
+                    setReconnectAttempt(prev => prev + 1);
+                    connectWebSocket();
+                }, 3000);
+            }
+        };
+
+        socket.onerror = (err) => {
+            console.error("WebSocket error:", err);
         };
     };
 
     const handleSend = (e) => {
         e.preventDefault();
-        if (!inputText.trim() || !isConnected) return;
-
-        // Send via WebSocket
+        if (!inputText.trim() || !isConnected || ws.current?.readyState !== WebSocket.OPEN) return;
         ws.current.send(inputText);
         setInputText('');
     };
@@ -116,7 +144,7 @@ export default function ChatWindow({ currentUserId, targetUser, isTherapist }) {
                             marginRight: '6px'
                         }}></span>
                         <span style={{ fontSize: '12px', color: '#666' }}>
-                            {isConnected ? 'En ligne' : 'Déconnecté'}
+                            {isConnected ? 'En ligne' : reconnectAttempt > 0 ? `Reconnexion... (${reconnectAttempt})` : 'Déconnecté'}
                         </span>
                     </div>
                 </div>
@@ -137,17 +165,11 @@ export default function ChatWindow({ currentUserId, targetUser, isTherapist }) {
                         )}
                         
                         {messages.map((msg, idx) => {
-                            if (msg.system) {
-                                return (
-                                    <div key={idx} style={styles.systemMessage}>
-                                        <small>{msg.message_text}</small>
-                                    </div>
-                                );
-                            }
+                            if (msg.system) return null; // hide system messages
 
                             const isMe = String(msg.sender_id) === String(currentUserId);
                             return (
-                                <div key={idx} style={styles.messageRow(isMe)}>
+                                <div key={msg.id || idx} style={styles.messageRow(isMe)}>
                                     <div style={styles.messageBubble(isMe)}>
                                         <div style={styles.messageText}>{msg.message_text}</div>
                                         {msg.timestamp && (
@@ -169,7 +191,7 @@ export default function ChatWindow({ currentUserId, targetUser, isTherapist }) {
                     type="text"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Écrivez votre message..."
+                    placeholder={isConnected ? "Écrivez votre message..." : "En attente de connexion..."}
                     style={styles.input}
                     disabled={!isConnected}
                 />

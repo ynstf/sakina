@@ -13,6 +13,15 @@ from models import SessionLocal, ChatMessage
 
     
 app = FastAPI(title="Sakina Private Chat Service")
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 security = HTTPBearer()
 
 GRPC_HOST = os.getenv("GRPC_HOST", "localhost:50051")
@@ -80,6 +89,8 @@ async def private_chat_endpoint(
     therapist_id: str, 
     token: str = Query(...)
 ):
+    await websocket.accept()
+
     # 1. Authenticate user via gRPC
     user = verify_token_with_django(token)
     if not user:
@@ -91,8 +102,6 @@ async def private_chat_endpoint(
         await websocket.close(code=1008, reason="Unauthorized: You do not have access to this private room")
         return
         
-    await websocket.accept()
-    
     # 3. Unique Private Channel Name
     channel_name = f"private_chat_c{client_id}_t{therapist_id}"
     pubsub = redis_client.pubsub()

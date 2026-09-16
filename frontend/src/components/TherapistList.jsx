@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import API from '../api/axios';
 import { User, Phone, DollarSign } from 'lucide-react';
 
-export default function TherapistList({ onSelectTherapist, selectedId }) {
+export default function TherapistList({ onSelectTherapist, selectedId, currentUserId }) {
     const [therapists, setTherapists] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -31,17 +31,20 @@ export default function TherapistList({ onSelectTherapist, selectedId }) {
         return <p style={{ padding: '10px', color: 'red' }}>{error}</p>;
     }
 
+    // FIX: Filter out the currently logged-in user from the list
+    const filteredTherapists = therapists.filter(t => String(t.id) !== String(currentUserId));
+
     return (
         <div>
             <h3 style={styles.sectionTitle}>Nos Thérapeutes</h3>
-            {therapists.length === 0 ? (
+            {filteredTherapists.length === 0 ? (
                 <p style={styles.emptyText}>Aucun thérapeute disponible pour le moment.</p>
             ) : (
                 <ul style={styles.list}>
-                    {therapists.map(t => (
+                    {filteredTherapists.map(t => (
                         <li 
                             key={t.id} 
-                            style={styles.listItem(selectedId === t.id)}
+                            style={styles.listItem(String(selectedId) === String(t.id))}
                             onClick={() => onSelectTherapist(t)}
                         >
                             <div style={styles.cardHeader}>
