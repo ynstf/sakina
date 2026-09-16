@@ -67,6 +67,9 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 def verify_me(user: dict = Depends(get_current_user)):
     return {"message": "gRPC connection secure", "user": user}
 
+@app.get("/")
+def home():
+    return {"message": "welcome to sakina private chat service"}
 # ==========================================
 # SECURE 1-ON-1 WEBSOCKET ENDPOINT
 # ==========================================
