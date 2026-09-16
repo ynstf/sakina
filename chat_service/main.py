@@ -171,3 +171,22 @@ def get_chat_history(
         "conversation": f"client_{client_id}_therapist_{therapist_id}",
         "messages": messages
     }
+
+@app.get("/api/chat/conversations")
+def get_conversations(
+    user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Returns a list of distinct clients a therapist has chatted with, or therapists a client has chatted with."""
+    user_id = user["id"]
+    
+    clients_messaged = db.query(ChatMessage.client_id).filter(ChatMessage.therapist_id == user_id).distinct().all()
+    therapists_messaged = db.query(ChatMessage.therapist_id).filter(ChatMessage.client_id == user_id).distinct().all()
+    
+    client_ids = [c[0] for c in clients_messaged]
+    therapist_ids = [t[0] for t in therapists_messaged]
+    
+    return {
+        "client_ids": client_ids,
+        "therapist_ids": therapist_ids
+    }

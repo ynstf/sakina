@@ -47,3 +47,12 @@ class TherapistRegistrationSerializer(serializers.ModelSerializer):
             session_price=session_price
         )
         return user
+
+class TherapistListSerializer(serializers.ModelSerializer):
+    specialty = serializers.CharField(source='therapist_profile.specialty', read_only=True)
+    session_price = serializers.DecimalField(source='therapist_profile.session_price', max_digits=10, decimal_places=2, read_only=True)
+    bio = serializers.CharField(source='therapist_profile.bio', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'phone_number', 'specialty', 'session_price', 'bio']

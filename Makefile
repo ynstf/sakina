@@ -28,6 +28,12 @@ up:
 down:
 	docker compose down
 
+up-local:
+	docker compose -f docker-compose.local.yml up --build -d
+
+down-local:
+	docker compose -f docker-compose.local.yml down
+
 migrate_docker:
 	docker compose exec web python manage.py makemigrations
 	docker compose exec web python manage.py migrate
