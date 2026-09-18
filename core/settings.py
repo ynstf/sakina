@@ -22,6 +22,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://84.8.219.196:5173",
     "http://84.8.219.196",
+    "http://sakina.mooo.com",
+    "https://sakina.mooo.com",
 ]
 
 # Application definition
