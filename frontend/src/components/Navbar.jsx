@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
 
 export default function Navbar() {
     const navigate = useNavigate();
-    const [menuOpen, setMenuOpen] = useState(false); // mobile menu toggle (UI-only, no business logic)
+    const [menuOpen, setMenuOpen] = useState(false); // mobile menu toggle
 
     const handleLogout = () => {
         localStorage.removeItem('access_token');
@@ -16,9 +16,6 @@ export default function Navbar() {
 
     return (
         <nav className="sk-navbar" data-menu-open={menuOpen}>
-            {/* Same "sk-" design system used across the app, embedded here.
-                On mobile, links + logout collapse into a dropdown toggled by
-                the hamburger button, driven by menuOpen above. */}
             <style>{`
                 .sk-navbar {
                     --sk-bg: #F6F4EE;
@@ -54,11 +51,21 @@ export default function Navbar() {
                     font-weight: 700;
                     color: var(--sk-primary);
                     white-space: nowrap;
+                    display: flex;
+                    align-items: center;
+                    text-decoration: none;
+                }
+
+                .sk-navbar-logo {
+                    height: 36px;
+                    width: auto;
+                    object-fit: contain;
                 }
 
                 .sk-navbar-links {
                     display: flex;
                     align-items: center;
+                    justify-content: center; /* <--- Centered the navigation links here */
                     gap: 24px;
                     flex: 1;
                 }
@@ -139,6 +146,7 @@ export default function Navbar() {
                         right: 0;
                         flex-direction: column;
                         align-items: stretch;
+                        justify-content: flex-start;
                         gap: 0;
                         background-color: var(--sk-surface);
                         border-bottom: 1px solid var(--sk-border);
@@ -183,7 +191,13 @@ export default function Navbar() {
                 }
             `}</style>
 
-            <div className="sk-navbar-brand">Sakina</div>
+            <Link to="/home" className="sk-navbar-brand">
+                <img
+                    src="/sakina_logo.png"
+                    alt="Sakina Logo"
+                    className="sk-navbar-logo"
+                />
+            </Link>
 
             <button
                 className="sk-menu-toggle"

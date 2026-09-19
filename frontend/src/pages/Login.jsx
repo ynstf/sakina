@@ -25,7 +25,7 @@ export default function Login() {
             localStorage.setItem('refresh_token', response.data.refresh);
             localStorage.setItem('username', formData.username);
             // Redirect l Dashboard aw Home mn ba3d Login
-            navigate('/dashboard');
+            navigate('/home');
         } catch (err) {
             setError('Nom d\'utilisateur ou mot de passe incorrect.');
         } finally {
