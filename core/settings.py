@@ -25,6 +25,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://sakina.mooo.com",
     "https://sakina.mooo.com",
 ]
+# For HTTPS secured connection
+CSRF_TRUSTED_ORIGINS = ['https://sakina.mooo.com']
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Application definition
 

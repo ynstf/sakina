@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -9,21 +9,21 @@ import MyProfile from './pages/MyProfile';
 import UserProfile from './pages/UserProfile';
 import Navbar from './components/Navbar';
 
-
-export default function App() {
+// 1. Create an inner component to handle the routing and layout
+function AppContent() {
+  const location = useLocation(); // This will trigger a re-render on route change
   const isAuthenticated = () => !!localStorage.getItem('access_token');
-  // Hide Navbar on Login page
-  const hideNavbar = location.pathname === '/login';
+
+  // 2. Hide Navbar on Login AND Register pages
+  const hideNavbar = location.pathname === '/login' || location.pathname === '/register';
 
   return (
-    <Router>
+    <>
       {!hideNavbar && <Navbar />}
       <Routes>
-
         <Route path="/home" element={<HomeFeed />} />
         <Route path="/me" element={<MyProfile />} />
         <Route path="/profile/:id" element={<UserProfile />} />
-
 
         {/* Route d l-Bdaya '/' */}
         <Route
@@ -31,7 +31,7 @@ export default function App() {
           element={<Navigate to={isAuthenticated() ? "/dashboard" : "/login"} replace />}
         />
 
-        {/* Guest Routes (Accessible ghir ila knti MA-connectich) */}
+        {/* Guest Routes */}
         <Route
           path="/login"
           element={
@@ -49,7 +49,7 @@ export default function App() {
           }
         />
 
-        {/* Protected Routes (Accessible ghir ila knti M-connecti) */}
+        {/* Protected Routes */}
         <Route
           path="/dashboard"
           element={
@@ -65,6 +65,15 @@ export default function App() {
           element={<Navigate to={isAuthenticated() ? "/dashboard" : "/login"} replace />}
         />
       </Routes>
+    </>
+  );
+}
+
+// 3. Keep App as the Router provider
+export default function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
