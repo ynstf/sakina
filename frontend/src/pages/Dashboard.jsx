@@ -99,13 +99,6 @@ export default function Dashboard() {
         });
     };
 
-    const handleLogout = () => {
-        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('username');
-        navigate('/login');
-    };
 
     const openChat = (id, name, role) => {
         setSelectedChatUser({ id: String(id), name, role });
@@ -113,9 +106,36 @@ export default function Dashboard() {
 
     if (loading) {
         return (
-            <div style={styles.container}>
-                <div style={styles.loadingCard}>
-                    <div style={styles.spinner}></div>
+            <div className="sk-dash-loading">
+                <style>{`
+                    .sk-dash-loading {
+                        --sk-bg: #F6F4EE;
+                        --sk-primary: #2F6F4E;
+                        --sk-text-muted: #5B6660;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        background-color: var(--sk-bg);
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                    }
+                    .sk-dash-loading-card {
+                        text-align: center;
+                        color: var(--sk-text-muted);
+                    }
+                    .sk-dash-spinner {
+                        width: 36px;
+                        height: 36px;
+                        border-radius: 50%;
+                        border: 3px solid #E1DCCE;
+                        border-top: 3px solid var(--sk-primary);
+                        animation: sk-spin 0.8s linear infinite;
+                        margin: 0 auto 12px;
+                    }
+                    @keyframes sk-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                `}</style>
+                <div className="sk-dash-loading-card">
+                    <div className="sk-dash-spinner"></div>
                     <p>Chargement de votre espace...</p>
                 </div>
             </div>
@@ -123,42 +143,306 @@ export default function Dashboard() {
     }
 
     return (
-        <div style={styles.dashboardLayout}>
+        <div className="sk-dashboard" data-has-chat={Boolean(selectedChatUser)}>
+            {/* Same "sk-" design system as the rest of the app, embedded here.
+                Mobile behavior: sidebar and chat area stack into a single view;
+                which one shows is driven by the existing `selectedChatUser` state
+                (no new state added) via the data-has-chat attribute below. */}
+            <style>{`
+                .sk-dashboard {
+                    --sk-bg: #F6F4EE;
+                    --sk-surface: #FFFFFF;
+                    --sk-border: #E1DCCE;
+                    --sk-text: #1F2A24;
+                    --sk-text-muted: #5B6660;
+                    --sk-primary: #2F6F4E;
+                    --sk-primary-hover: #275C41;
+                    --sk-badge-therapist-bg: #DCEFE2;
+                    --sk-badge-therapist-text: #1F5A3C;
+                    --sk-badge-client-bg: #E4EAF7;
+                    --sk-badge-client-text: #2C3E75;
+                    --sk-danger-bg: #FBEAE9;
+                    --sk-danger-text: #A32E26;
+                    --sk-danger-border: #E9BAB5;
+                    --sk-focus-ring: rgba(47, 111, 78, 0.35);
+
+                    display: flex;
+                    height: 100vh;
+                    background-color: var(--sk-bg);
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                    color: var(--sk-text);
+                    overflow: hidden;
+                }
+
+                .sk-dashboard * {
+                    box-sizing: border-box;
+                }
+
+                .sk-sidebar {
+                    width: 300px;
+                    min-width: 300px;
+                    background-color: var(--sk-surface);
+                    border-right: 1px solid var(--sk-border);
+                    display: flex;
+                    flex-direction: column;
+                    box-shadow: 2px 0 8px rgba(31, 42, 36, 0.04);
+                }
+
+                .sk-sidebar-header {
+                    padding: 20px;
+                    border-bottom: 1px solid var(--sk-border);
+                    background-color: #F0F7F2;
+                }
+
+                .sk-sidebar-brand {
+                    margin: 0;
+                    color: var(--sk-primary);
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                }
+
+                .sk-sidebar-username {
+                    margin: 8px 0 0;
+                    font-size: 0.9rem;
+                    color: var(--sk-text-muted);
+                }
+
+                .sk-role-badge {
+                    display: inline-block;
+                    margin-top: 6px;
+                    padding: 2px 10px;
+                    border-radius: 12px;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                }
+
+                .sk-role-badge--therapist {
+                    background-color: var(--sk-badge-therapist-bg);
+                    color: var(--sk-badge-therapist-text);
+                }
+
+                .sk-role-badge--client {
+                    background-color: var(--sk-badge-client-bg);
+                    color: var(--sk-badge-client-text);
+                }
+
+                .sk-sidebar-content {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 10px 0;
+                }
+
+
+                .sk-section-label {
+                    font-size: 0.7rem;
+                    font-weight: 700;
+                    color: var(--sk-text-muted);
+                    letter-spacing: 0.06em;
+                    padding: 8px 20px 4px;
+                    margin: 0;
+                }
+
+                .sk-client-list {
+                    list-style: none;
+                    padding: 0 10px;
+                    margin: 0;
+                }
+
+                .sk-client-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 12px 14px;
+                    margin: 4px 0;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    background-color: transparent;
+                    border: 1px solid transparent;
+                    transition: background-color 0.15s ease, border-color 0.15s ease;
+                }
+
+                .sk-client-item:hover {
+                    background-color: #F6F4EE;
+                }
+
+                .sk-client-item--selected {
+                    background-color: #EAF4EE;
+                    border-color: #A8D4B8;
+                }
+
+                .sk-client-item:focus-visible {
+                    outline: 3px solid var(--sk-focus-ring);
+                    outline-offset: 2px;
+                }
+
+                .sk-client-avatar {
+                    width: 38px;
+                    height: 38px;
+                    border-radius: 50%;
+                    background-color: var(--sk-primary);
+                    color: #fff;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1rem;
+                    font-weight: 700;
+                    flex-shrink: 0;
+                }
+
+                .sk-client-info {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                    min-width: 0;
+                }
+
+                .sk-client-info strong {
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                .sk-client-info small {
+                    color: var(--sk-text-muted);
+                }
+
+                .sk-empty-state {
+                    padding: 30px 20px;
+                    text-align: center;
+                    color: var(--sk-text-muted);
+                    line-height: 1.6;
+                }
+
+                .sk-empty-state-icon {
+                    font-size: 2rem;
+                    margin: 0;
+                }
+
+                .sk-main-area {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                    min-width: 0;
+                }
+
+                .sk-mobile-back {
+                    display: none;
+                }
+
+                .sk-welcome-state {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 12px;
+                    padding: 24px;
+                    text-align: center;
+                }
+
+                .sk-welcome-title {
+                    color: var(--sk-primary);
+                    margin: 0;
+                    font-size: 1.3rem;
+                }
+
+                .sk-welcome-text {
+                    color: var(--sk-text-muted);
+                    max-width: 400px;
+                    margin: 0;
+                }
+
+                @media (prefers-reduced-motion: reduce) {
+                    .sk-dashboard * {
+                        transition-duration: 0.001ms !important;
+                        animation-duration: 0.001ms !important;
+                    }
+                }
+
+                /* ---- Mobile: stack into a single-pane view ----
+                   Which pane shows is driven by whether a chat is selected
+                   (data-has-chat, set from the existing selectedChatUser state) */
+                @media (max-width: 768px) {
+                    .sk-dashboard {
+                        flex-direction: column;
+                        height: 100dvh;
+                    }
+
+                    .sk-sidebar {
+                        width: 100%;
+                        min-width: 0;
+                        border-right: none;
+                        border-bottom: 1px solid var(--sk-border);
+                    }
+
+                    .sk-dashboard[data-has-chat="true"] .sk-sidebar {
+                        display: none;
+                    }
+
+                    .sk-dashboard[data-has-chat="false"] .sk-main-area {
+                        display: none;
+                    }
+
+                    .sk-mobile-back {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        align-self: flex-start;
+                        margin: 12px 16px 0;
+                        padding: 8px 14px;
+                        background-color: var(--sk-surface);
+                        color: var(--sk-text);
+                        border: 1px solid var(--sk-border);
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 0.9rem;
+                        font-weight: 500;
+                    }
+
+                    .sk-mobile-back:focus-visible {
+                        outline: 3px solid var(--sk-focus-ring);
+                        outline-offset: 2px;
+                    }
+                }
+            `}</style>
+
             {/* ---- SIDEBAR ---- */}
-            <div style={styles.sidebar}>
-                <div style={styles.sidebarHeader}>
-                    <h2 style={{ margin: 0, color: '#2e7d32', fontSize: '22px' }}>🌿 Sakina</h2>
-                    <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#555' }}>
-                        <strong>{username}</strong>
-                    </p>
-                    <span style={styles.roleBadge(isTherapist)}>
+            <div className="sk-sidebar">
+                <div className="sk-sidebar-header">
+                    <h2 className="sk-sidebar-brand">🌿 Sakina</h2>
+                    <p className="sk-sidebar-username"><strong>{username}</strong></p>
+                    <span className={`sk-role-badge ${isTherapist ? 'sk-role-badge--therapist' : 'sk-role-badge--client'}`}>
                         {isTherapist ? '🩺 Thérapeute' : '👤 Client'}
                     </span>
                 </div>
 
-                <div style={styles.sidebarContent}>
+                <div className="sk-sidebar-content">
                     {isTherapist ? (
                         /* THERAPIST VIEW: show clients who have sent messages */
                         <div>
-                            <p style={styles.sectionLabel}>MES CONVERSATIONS</p>
+                            <p className="sk-section-label">MES CONVERSATIONS</p>
                             {activeClients.length === 0 ? (
-                                <div style={styles.emptyState}>
-                                    <p style={{ fontSize: '32px', margin: 0 }}>💬</p>
+                                <div className="sk-empty-state">
+                                    <p className="sk-empty-state-icon">💬</p>
                                     <p>En attente de messages...</p>
                                     <small>Les clients qui vous envoient un message apparaîtront ici.</small>
                                 </div>
                             ) : (
-                                <ul style={styles.list}>
+                                <ul className="sk-client-list">
                                     {activeClients.map(client => (
                                         <li
                                             key={client.id}
-                                            style={styles.listItem(selectedChatUser?.id === client.id)}
+                                            className={`sk-client-item ${selectedChatUser?.id === client.id ? 'sk-client-item--selected' : ''}`}
                                             onClick={() => openChat(client.id, client.username, 'CLIENT')}
+                                            tabIndex={0}
+                                            role="button"
+                                            onKeyDown={(e) => { if (e.key === 'Enter') openChat(client.id, client.username, 'CLIENT'); }}
                                         >
-                                            <div style={styles.clientAvatar}>{client.username.charAt(0).toUpperCase()}</div>
-                                            <div style={styles.clientInfo}>
+                                            <div className="sk-client-avatar">{client.username.charAt(0).toUpperCase()}</div>
+                                            <div className="sk-client-info">
                                                 <strong>{client.username}</strong>
-                                                <small style={{ color: '#888' }}>Cliquez pour ouvrir</small>
+                                                <small>Cliquez pour ouvrir</small>
                                             </div>
                                         </li>
                                     ))}
@@ -175,15 +459,15 @@ export default function Dashboard() {
                     )}
                 </div>
 
-                <div style={styles.sidebarFooter}>
-                    <button onClick={handleLogout} style={styles.logoutBtn}>
-                        🚪 Se Déconnecter
-                    </button>
-                </div>
             </div>
 
             {/* ---- MAIN CHAT AREA ---- */}
-            <div style={styles.mainArea}>
+            <div className="sk-main-area">
+                {selectedChatUser && (
+                    <button className="sk-mobile-back" onClick={() => setSelectedChatUser(null)}>
+                        ← Retour
+                    </button>
+                )}
                 {selectedChatUser ? (
                     <ChatWindow
                         currentUserId={userId}
@@ -192,9 +476,9 @@ export default function Dashboard() {
                         onNewMessage={isTherapist ? onNewClientMessage : null}
                     />
                 ) : (
-                    <div style={styles.welcomeState}>
-                        <h2 style={{ color: '#2e7d32' }}>Bienvenue, {username} !</h2>
-                        <p style={{ color: '#888', maxWidth: '400px', textAlign: 'center' }}>
+                    <div className="sk-welcome-state">
+                        <h2 className="sk-welcome-title">Bienvenue, {username} !</h2>
+                        <p className="sk-welcome-text">
                             {isTherapist
                                 ? 'Sélectionnez une conversation dans la liste de gauche pour commencer à répondre.'
                                 : 'Choisissez un thérapeute dans la liste de gauche pour démarrer une consultation.'}
@@ -202,56 +486,6 @@ export default function Dashboard() {
                     </div>
                 )}
             </div>
-            <style>{`
-                @keyframes spin-dash { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            `}</style>
         </div>
     );
 }
-
-const styles = {
-    dashboardLayout: { display: 'flex', height: '100vh', fontFamily: "'Segoe UI', system-ui, sans-serif", backgroundColor: '#f4f6f9' },
-    sidebar: { width: '300px', minWidth: '300px', backgroundColor: '#fff', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 8px rgba(0,0,0,0.04)' },
-    sidebarHeader: { padding: '20px', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f0fdf4' },
-    roleBadge: (isTherapist) => ({
-        display: 'inline-block',
-        marginTop: '6px',
-        padding: '2px 10px',
-        borderRadius: '12px',
-        fontSize: '12px',
-        fontWeight: '600',
-        backgroundColor: isTherapist ? '#d1fae5' : '#dbeafe',
-        color: isTherapist ? '#065f46' : '#1e40af',
-    }),
-    sidebarContent: { flex: 1, overflowY: 'auto', padding: '10px 0' },
-    sidebarFooter: { padding: '16px 20px', borderTop: '1px solid #e5e7eb' },
-    sectionLabel: { fontSize: '11px', fontWeight: '700', color: '#9ca3af', letterSpacing: '1px', padding: '8px 20px 4px', margin: 0 },
-    list: { listStyle: 'none', padding: '0 10px', margin: 0 },
-    listItem: (isSelected) => ({
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        padding: '12px 14px',
-        margin: '4px 0',
-        borderRadius: '10px',
-        cursor: 'pointer',
-        backgroundColor: isSelected ? '#ecfdf5' : 'transparent',
-        border: isSelected ? '1px solid #6ee7b7' : '1px solid transparent',
-        transition: 'all 0.15s ease',
-    }),
-    clientAvatar: {
-        width: '38px', height: '38px', borderRadius: '50%',
-        backgroundColor: '#2e7d32', color: '#fff',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '16px', fontWeight: '700', flexShrink: 0
-    },
-    clientInfo: { display: 'flex', flexDirection: 'column', gap: '2px' },
-    emptyState: { padding: '30px 20px', textAlign: 'center', color: '#9ca3af', lineHeight: '1.6' },
-    logoutBtn: { width: '100%', padding: '10px', backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' },
-    mainArea: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-    welcomeState: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' },
-    welcomeIcon: { fontSize: '60px' },
-    container: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f4f6f9' },
-    loadingCard: { textAlign: 'center', color: '#555' },
-    spinner: { width: '36px', height: '36px', borderRadius: '50%', border: '3px solid #e5e7eb', borderTop: '3px solid #2e7d32', animation: 'spin-dash 0.8s linear infinite', margin: '0 auto 12px' },
-};
